@@ -16,29 +16,39 @@ class AgentState(TypedDict):
 
 def planner(state: AgentState) -> dict:
     prompt = (
-        f"Given this anomaly:\n\n{state['raw_text']}\n\n"
-        "List the steps to:\n"
-        "1. Assign a confidence score (0–100).\n"
-        "2. Classify the anomaly type.\n"
-        "3. Justify the classification.\n"
-        "4. Recommend follow-up investigation."
+        f"You are analyzing the following **network anomaly cluster**. "
+        f"Treat all data below as part of ONE event.\n\n"
+        f"Anomaly Cluster:\n\n{state['raw_text']}\n\n"
+        "Your task is to produce a concise, clear 4-step analysis:\n\n"
+        "1. Confidence Score (0–100): Estimate how confident you are this is an anomaly.\n"
+        "2. Classification: Name the **type of anomaly** in a single phrase.\n"
+        "3. Justification: Briefly justify the classification — avoid repetition or vague phrasing. Mention each unique insight only once.\n"
+        "4. Recommendation: Give 1–3 **actionable next steps**, each on a new line. Avoid repeating the justification or general advice.\n\n"
+        "**Avoid repeating the same facts multiple times across steps. Be precise and minimal.**\n"
+        "Use this exact format:\n"
+        "Step 1: Confidence Scoring: <score>\n"
+        "Step 2: Anomaly Classification: <type>\n"
+        "Step 3: Justification: <concise explanation>\n"
+        "Step 4: Follow-up Recommendation: <one-line steps>\n"
     )
 
     console.print("[bold]Sending plan prompt to LLM...[/bold]")
     result = state["llm"].invoke(prompt)
     full_response = result.content.strip()
-    console.print(f"⠼ Planning & Executing... {time.strftime('%H:%M:%S')}Received plan response: {full_response[:120]}...\n")
+    console.print(f"⠼ Planning & Executing... {time.strftime('%H:%M:%S')} Received plan response: {full_response[:120]}...\n")
 
-    # Extract meaningful steps
-    lines = full_response.splitlines()
-    steps = [
-        line.strip()
-        for line in lines
-        if line.lower().startswith("step") or line.strip()[:2] in {"1.", "2.", "3.", "4."}
-    ]
+    # Extract exact steps
+    steps = []
+    for i in range(1, 5):
+        match = re.search(rf"Step {i}:(.*?)\n(?=Step \d:|$)", full_response + "\nStep 5:", re.DOTALL | re.IGNORECASE)
+        if match:
+            steps.append(f"Step {i}:{match.group(1).strip()}")
 
-    console.print(f"Parsed {len(steps)} valid plan steps.\n")
+    if len(steps) != 4:
+        console.print(f"[red]⚠️ Expected 4 steps but got {len(steps)}.\nRaw response:\n{full_response}[/red]")
+
     return {"plan": steps}
+
 
 
 import asyncio
@@ -49,33 +59,37 @@ async def async_invoke(llm, prompt):
     return await loop.run_in_executor(None, llm.invoke, prompt)
 
 async def executor(state: AgentState) -> dict:
-    renamed_steps = rename_plan_steps(state["plan"])
     outputs = {}
 
-    async def run_step(idx, orig_step, renamed_step):
-        key = re.sub(r"[^\w]+", "_", renamed_step.lower().split(":")[0]).strip("_") or f"step_{idx}"
-        console.print(f"[bold]Executing {renamed_step}[/bold]")
+    async def run_step(idx, orig_step):
+        console.print(f"[bold]Executing {orig_step}[/bold]")
         start = time.time()
         try:
-            result = await async_invoke(state["llm"], f"{orig_step}\n\nDetails:\n{state['raw_text']}")
+            result = await async_invoke(state["llm"], f"{orig_step}\n\nAnomaly:\n{state['raw_text']}")
             duration = time.time() - start
             console.print(f"[green]Completed[/green] in {duration:.1f} seconds\n")
-            return key, result.content.strip()
+            return idx, result.content.strip()
         except Exception as e:
             duration = time.time() - start
             console.print(f"[red]Failed[/red] after {duration:.1f} seconds: {e}\n")
-            return key, str(e)
+            return idx, str(e)
 
-    tasks = [
-        run_step(idx, orig_step, renamed_step)
-        for idx, (orig_step, renamed_step) in enumerate(zip(state["plan"], renamed_steps), 1)
-    ]
+    tasks = [run_step(idx, step) for idx, step in enumerate(state["plan"], 1)]
     results = await asyncio.gather(*tasks)
 
-    for key, value in results:
+    # Map fixed step index to known keys
+    key_map = {
+        1: "assign",
+        2: "classify",
+        3: "justify",
+        4: "recommend"
+    }
+    for idx, value in results:
+        key = key_map.get(idx, f"step_{idx}")
         outputs[key] = value
 
     return {"executors": outputs}
+
 
 
 

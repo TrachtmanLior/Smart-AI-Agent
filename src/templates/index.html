@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Smart Anomaly Agent</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body { background-color: #f8f9fa; }
+    .card { border-radius: 12px; margin-top: 1.5rem; }
+    pre { background: #f8f9fa; padding: 1rem; border: 1px solid #ccc; border-radius: 10px; max-height: 400px; overflow-y: auto; }
+    .timer { font-weight: bold; font-size: 1.1em; color: #0d6efd; margin-left: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="container mt-5">
+    <h1 class="text-primary mb-4">🔍 Smart Anomaly Agent</h1>
+
+    <!-- Form -->
+    <form id="analyze-form">
+      <div class="mb-3">
+        <label for="input_text" class="form-label">Paste your anomaly cluster log:</label>
+        <textarea class="form-control" name="input_text" rows="8" required></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary">🧠 Analyze</button>
+    </form>
+
+    <!-- Status + Timer -->
+    <div id="status-area" class="mt-4" style="display: none;">
+      <div class="d-flex align-items-center">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <div class="timer" id="elapsed-time">Elapsed: 0s</div>
+      </div>
+      <h5 class="mt-3">Agent Thinking:</h5>
+      <pre id="status-log">⏳ Initializing...</pre>
+    </div>
+
+    <!-- Final result -->
+    <div id="final-result" class="card shadow p-4 mt-4" style="display: none;">
+        <h4>📄 Final SOC Report</h4>
+        <pre id="justify" style="white-space: pre-wrap;"></pre>
+    </div>
+  </div>
+
+  <script>
+    let startTime;
+    let timerInterval;
+
+    function startTimer() {
+      startTime = Date.now();
+      timerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        document.getElementById("elapsed-time").innerText = `Elapsed: ${elapsed}s`;
+      }, 1000);
+    }
+
+    function stopTimer() {
+      clearInterval(timerInterval);
+    }
+
+    document.getElementById("analyze-form").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+
+      document.getElementById("status-area").style.display = "block";
+      document.getElementById("status-log").innerText = "⏳ Starting task...";
+      document.getElementById("final-result").style.display = "none";
+
+      fetch("/start-task", {
+        method: "POST",
+        body: formData,
+      });
+
+      startTimer();
+
+      const poll = setInterval(() => {
+        fetch("/progress")
+          .then((res) => res.json())
+          .then((data) => {
+            document.getElementById("status-log").innerText = data.log.join("\n");
+
+            if (data.done) {
+              clearInterval(poll);
+              stopTimer();
+
+              document.getElementById("assign").innerText = data.result.assign;
+              document.getElementById("classify").innerText = data.result.classify;
+              document.getElementById("justify").innerHTML = data.result.justify.replace(/\n/g, "<br>");
+              document.getElementById("recommend").innerHTML = data.result.recommend.replace(/\n/g, "<br>");
+              document.getElementById("final-result").style.display = "block";
+            }
+          });
+      }, 1000);
+    });
+  </script>
+</body>
+</html>

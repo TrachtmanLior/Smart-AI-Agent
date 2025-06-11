@@ -1,9 +1,9 @@
 import os
+import asyncio
 from langchain_ollama import ChatOllama
 from agent_graph import build_graph, AgentState
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn, TextColumn
-import asyncio
 
 def load_input() -> str:
     file_path = os.path.join(os.path.dirname(__file__), "..", "data", "anomaly_summary.txt")
@@ -14,7 +14,7 @@ def main():
     console = Console()
     llm = ChatOllama(
         model="llama3.1:8b",
-        temperature=0.0
+        temperature=0.3
     )
 
     console.print("✅ [bold green]LLM loaded.[/bold green] Building graph...")
@@ -46,15 +46,15 @@ def main():
         progress.update(task, description="✅ Finished execution")
         progress.stop()
 
-    output = result.get("final_output", {})
+    default_keys = {"assign": "N/A", "classify": "N/A", "justify": "N/A", "recommend": "N/A"}
+    output = {**default_keys, **result.get("final_output", {})}
 
     console.print("\n=== 🧠 [bold underline]Anomaly Agent Detailed Report[/bold underline] ===")
-    console.print(f"🟡 [bold]Confidence Score:[/bold] {output.get('assign', 'N/A')}")
-    console.print(f"🧩 [bold]Anomaly Classification:[/bold] {output.get('classify', 'N/A')}")
-    console.print(f"📝 [bold]Detailed Justification:[/bold]\n{output.get('justify', 'N/A')}")
+    console.print(f"🟡 [bold]Confidence Score:[/bold] {output['assign']}")
+    console.print(f"🧩 [bold]Anomaly Classification:[/bold] {output['classify']}")
+    console.print(f"📝 [bold]Detailed Justification:[/bold]\n{output['justify']}")
     console.print(f"🔍 [bold]Why It's Anomalous:[/bold]\nBased on observed packet patterns, abnormal length distributions, and timing, the agent detected significant deviation from expected behavior in the cluster logs.\n")
-    console.print(f"🔁 [bold]Recommended Investigation:[/bold] {output.get('recommend', 'N/A')}")
-
+    console.print(f"🔁 [bold]Recommended Investigation:[/bold] {output['recommend']}")
 
 if __name__ == "__main__":
     main()
