@@ -15,22 +15,53 @@ class AgentState(TypedDict):
 
 
 def planner(state: AgentState) -> dict:
-    prompt = (
-        f"You are analyzing the following **network anomaly cluster**. "
-        f"Treat all data below as part of ONE event.\n\n"
-        f"Anomaly Cluster:\n\n{state['raw_text']}\n\n"
-        "Your task is to produce a concise, clear 4-step analysis:\n\n"
-        "1. Confidence Score (0–100): Estimate how confident you are this is an anomaly.\n"
-        "2. Classification: Name the **type of anomaly** in a single phrase.\n"
-        "3. Justification: Briefly justify the classification — avoid repetition or vague phrasing. Mention each unique insight only once.\n"
-        "4. Recommendation: Give 1–3 **actionable next steps**, each on a new line. Avoid repeating the justification or general advice.\n\n"
-        "**Avoid repeating the same facts multiple times across steps. Be precise and minimal.**\n"
-        "Use this exact format:\n"
-        "Step 1: Confidence Scoring: <score>\n"
-        "Step 2: Anomaly Classification: <type>\n"
-        "Step 3: Justification: <concise explanation>\n"
-        "Step 4: Follow-up Recommendation: <one-line steps>\n"
-    )
+    prompt = f"""
+    You are a cybersecurity analyst reporting to the SOC team "Rans Pupils".
+
+    You are analyzing the following anomaly cluster. Treat it as a **single cohesive event**, not as independent anomalies:
+
+    === Anomaly Cluster ===
+    {state['raw_text']}
+    =======================
+
+    You must generate a **structured, concise, non-redundant report** with the following exact format:
+
+    ---
+
+    📄 **Rans Pupils Anomaly Report**
+
+    🔹 **Anomaly ID**: Auto-generated or derived from source IP/cluster
+    🔹 **Confidence Score**: <number out of 100>
+
+    🔸 **Classification**: <Short name, e.g. "Denial-of-Service (DoS)", "Port Scan", "Suspicious Exfiltration">
+
+    🧪 **Impact Summary**:
+    - Clearly describe the potential threat and affected assets
+    - Avoid repeating facts; be concise and unique
+
+    📊 **Key Metrics**:
+    - Packet Lengths: <avg/max packet size>
+    - Number of Packets: <count>
+    - Source IPs: <list>
+    - Affected Ports: <list>
+    - Flags Detected: <e.g. PSH/ACK/URG>
+
+    🔍 **Supporting Evidence**:
+    - One or two insights that show this is anomalous compared to normal traffic
+    - Show deviations, unusual timing, or correlation across nodes
+
+    🛡 **Recommendations**:
+    1. Investigate <ip>:<port>...
+    2. Analyze logs for ...
+    3. Apply mitigation: <firewall, rate-limit, etc>
+
+    ---
+
+    🔒 Your output must match this structure exactly. Do **not** repeat IPs or patterns more than once. No extra commentary.
+
+    Respond with **only the filled-in report**, nothing else.
+    """
+
 
     console.print("[bold]Sending plan prompt to LLM...[/bold]")
     result = state["llm"].invoke(prompt)

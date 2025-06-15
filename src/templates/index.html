@@ -15,14 +15,30 @@
   <div class="container mt-5">
     <h1 class="text-primary mb-4">🔍 Smart Anomaly Agent</h1>
 
-    <!-- Form -->
-    <form id="analyze-form">
-      <div class="mb-3">
-        <label for="input_text" class="form-label">Paste your anomaly cluster log:</label>
-        <textarea class="form-control" name="input_text" rows="8" required></textarea>
+    <!-- File selector + Form Row -->
+    <div class="row">
+      <div class="col-md-3">
+        <!-- Sidebar file dropdown -->
+        <label for="file-selector" class="form-label">📁 Select anomaly file:</label>
+        <select id="file-selector" class="form-select">
+          <option disabled selected value="">-- Choose a file --</option>
+          {% for file in file_options %}
+            <option value="{{ file }}">{{ file }}</option>
+          {% endfor %}
+        </select>
       </div>
-      <button type="submit" class="btn btn-primary">🧠 Analyze</button>
-    </form>
+
+      <div class="col-md-9">
+        <!-- Form -->
+        <form id="analyze-form">
+          <div class="mb-3">
+            <label for="input_text" class="form-label">Paste your anomaly cluster log:</label>
+            <textarea class="form-control" name="input_text" rows="8" required></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary">🧠 Analyze</button>
+        </form>
+      </div>
+    </div>
 
     <!-- Status + Timer -->
     <div id="status-area" class="mt-4" style="display: none;">
@@ -38,8 +54,8 @@
 
     <!-- Final result -->
     <div id="final-result" class="card shadow p-4 mt-4" style="display: none;">
-        <h4>📄 Final SOC Report</h4>
-        <pre id="justify" style="white-space: pre-wrap;"></pre>
+      <h4>📄 Final SOC Report</h4>
+      <pre id="justify" style="white-space: pre-wrap;"></pre>
     </div>
   </div>
 
@@ -58,6 +74,26 @@
     function stopTimer() {
       clearInterval(timerInterval);
     }
+
+    // Load file contents into textarea
+    document.getElementById("file-selector").addEventListener("change", function () {
+      const selected = this.value;
+      if (!selected) return;
+
+      fetch("/load-file", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: selected })
+      })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.content) {
+          document.querySelector("textarea[name='input_text']").value = data.content;
+        } else {
+          alert("Failed to load file.");
+        }
+      });
+    });
 
     document.getElementById("analyze-form").addEventListener("submit", function (e) {
       e.preventDefault();
@@ -84,10 +120,7 @@
               clearInterval(poll);
               stopTimer();
 
-              document.getElementById("assign").innerText = data.result.assign;
-              document.getElementById("classify").innerText = data.result.classify;
               document.getElementById("justify").innerHTML = data.result.justify.replace(/\n/g, "<br>");
-              document.getElementById("recommend").innerHTML = data.result.recommend.replace(/\n/g, "<br>");
               document.getElementById("final-result").style.display = "block";
             }
           });

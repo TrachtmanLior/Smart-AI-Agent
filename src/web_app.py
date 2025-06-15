@@ -2,23 +2,45 @@ from flask import Flask, render_template, request, jsonify
 import asyncio
 import threading
 import time
+import os  # ✅ NEW
 from langchain_ollama import ChatOllama
-from agent_graph import build_graph, AgentState, planner
+from agent_graph import build_graph, AgentState
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 
-# LangChain LLM setup
 llm = ChatOllama(model="llama3.1:8b", temperature=0.0)
 graph = build_graph(llm)
 
-# Global state for progress updates
+# ✅ NEW: Absolute path to /data folder
+DATA_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), "../data"))
+
 progress_log = []
 final_output = {}
 task_done = False
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    # ✅ NEW: Collect all .txt files under /data
+    txt_files = []
+    for root, dirs, files in os.walk(DATA_FOLDER):
+        for file in files:
+            if file.endswith(".txt"):
+                rel_path = os.path.relpath(os.path.join(root, file), DATA_FOLDER)
+                txt_files.append(rel_path)
+    return render_template("index.html", file_options=sorted(txt_files))
+
+@app.route("/load-file", methods=["POST"])
+def load_file():
+    filename = request.json.get("filename")
+    if not filename:
+        return jsonify({"error": "No filename provided"}), 400
+    file_path = os.path.join(DATA_FOLDER, filename)
+    try:
+        with open(file_path, "r") as f:
+            content = f.read()
+        return jsonify({"content": content})
+    except FileNotFoundError:
+        return jsonify({"error": "File not found"}), 404
 
 @app.route("/start-task", methods=["POST"])
 def start_task():
@@ -40,28 +62,22 @@ def start_task():
             "llm": llm
         }
 
-        # Start the plan step (full report generation)
         progress_log.append("📌 [Planning] Generating structured SOC report...")
-
-        # Build and run your new prompt directly
         prompt = generate_soc_prompt(input_text)
         result = asyncio.run(async_invoke(llm, prompt))
         full_report = result.content.strip()
-
-        # Add it to progress log and final output
         progress_log.append("✅ Report ready.")
         progress_log.append(full_report)
 
         final_output.update({
             "assign": "SOC Report Ready",
             "classify": "SOC Report Ready",
-            "justify": full_report,     # This is shown in the UI
+            "justify": full_report,
             "recommend": "SOC Report Ready"
         })
 
         global task_done
         task_done = True
-
 
     threading.Thread(target=run_agent).start()
     return jsonify({"status": "started"})
@@ -74,7 +90,6 @@ def progress():
         "result": final_output if task_done else None
     })
 
-# Helper to run synchronous invoke from async context
 async def async_invoke(llm, prompt):
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(None, llm.invoke, prompt)
@@ -118,7 +133,3 @@ Generate a structured, concise report in this format:
 
 Respond with **only this structured report**. No extra commentary.
 """
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
