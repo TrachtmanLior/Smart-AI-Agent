@@ -1,17 +1,19 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_file
 import asyncio
 import threading
 import time
 import os
+import io
+import json
 from langchain_ollama import ChatOllama
 from agent_graph import build_graph, AgentState
+from fpdf import FPDF
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 
 llm = ChatOllama(model="llama3.1:8b", temperature=0.0)
 graph = build_graph(llm)
 
-# Absolute path to /data folder
 DATA_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), "../data"))
 
 progress_log = []
@@ -20,9 +22,8 @@ task_done = False
 
 @app.route("/")
 def index():
-    # Get .txt files under /data
     txt_files = []
-    for root, dirs, files in os.walk(DATA_FOLDER):
+    for root, _, files in os.walk(DATA_FOLDER):
         for file in files:
             if file.endswith(".txt"):
                 rel_path = os.path.relpath(os.path.join(root, file), DATA_FOLDER)
@@ -62,20 +63,21 @@ def start_task():
             "llm": llm
         }
 
-        progress_log.append("📌 [Planning] Generating structured SOC report...")
+        progress_log.append("\ud83d\udccc [Planning] Generating structured SOC report...")
         prompt = generate_soc_prompt(input_text)
         result = asyncio.run(async_invoke(llm, prompt))
         full_report = result.content.strip()
-        progress_log.append("✅ Report ready.")
+        progress_log.append("\u2705 Report ready.")
         progress_log.append(full_report)
 
-        # Optional dummy metrics — replace with real analysis logic
         dummy_metrics = {
             "avg_packet_length": 523,
             "max_packet_length": 1412,
             "packet_count": 38,
             "source_ips": ["192.168.0.1", "10.0.0.2"],
-            "ports": [22, 80, 443]
+            "ports": [22, 80, 443],
+            "flags": {"PSH": 12, "ACK": 20, "URG": 6},
+            "risk_level": "High"
         }
 
         final_output.update({
@@ -100,13 +102,42 @@ def progress():
         "result": final_output if task_done else None
     })
 
+@app.route("/download/json")
+def download_json():
+    if not final_output:
+        return "No data available", 400
+    return jsonify(final_output)
+
+@app.route("/download/txt")
+def download_txt():
+    if not final_output:
+        return "No report to download", 400
+    buffer = io.StringIO()
+    buffer.write(final_output.get("justify", "No report"))
+    buffer.seek(0)
+    return send_file(io.BytesIO(buffer.read().encode()), mimetype="text/plain", as_attachment=True, download_name="report.txt")
+
+@app.route("/download/pdf")
+def download_pdf():
+    if not final_output:
+        return "No report to download", 400
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    for line in final_output.get("justify", "No report").splitlines():
+        pdf.multi_cell(0, 10, line)
+    buffer = io.BytesIO()
+    pdf.output(buffer)
+    buffer.seek(0)
+    return send_file(buffer, mimetype="application/pdf", as_attachment=True, download_name="report.pdf")
+
 async def async_invoke(llm, prompt):
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(None, llm.invoke, prompt)
 
 def generate_soc_prompt(raw_text: str) -> str:
     return f"""
-You are a cybersecurity analyst reporting to the SOC team "Rans Pupils".
+You are a cybersecurity analyst reporting to the SOC team \"Rans Pupils\".
 
 You are analyzing the following anomaly cluster. Treat it as a single cohesive event.
 
@@ -116,27 +147,27 @@ You are analyzing the following anomaly cluster. Treat it as a single cohesive e
 
 Generate a structured, concise report in this format:
 
-📄 **Rans Pupils Anomaly Report**
+\ud83d\udcc4 **Rans Pupils Anomaly Report**
 
-🔹 **Anomaly ID**: Auto-generated or derived from IP  
-🔹 **Confidence Score**: <0-100>
+\ud83d\udd39 **Anomaly ID**: Auto-generated or derived from IP  
+\ud83d\udd39 **Confidence Score**: <0-100>
 
-🔸 **Classification**: e.g. Denial-of-Service (DoS), Port Scan
+\ud83d\udd38 **Classification**: e.g. Denial-of-Service (DoS), Port Scan
 
-🧪 **Impact Summary**:
+\ud83e\uddea **Impact Summary**:
 - Describe affected systems, risks, goals
 
-📊 **Key Metrics**:
+\ud83d\udcca **Key Metrics**:
 - Packet Lengths: avg/max
 - Packet Count: total
 - Source IPs: [list]
 - Affected Ports: [list]
 - Flags: e.g. PSH/ACK/URG
 
-🔍 **Supporting Evidence**:
+\ud83d\udd0d **Supporting Evidence**:
 - Unusual timing, packet bursts, repeated flags, etc.
 
-🛡 **Recommendations**:
+\ud83d\udee1 **Recommendations**:
 1. Investigate source IPs
 2. Analyze suspicious ports
 3. Apply firewall/rate-limit
