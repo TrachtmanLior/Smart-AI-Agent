@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, jsonify
 import asyncio
 import threading
 import time
-import os  # ✅ NEW
+import os
 from langchain_ollama import ChatOllama
 from agent_graph import build_graph, AgentState
 
@@ -11,7 +11,7 @@ app = Flask(__name__, template_folder="templates", static_folder="static")
 llm = ChatOllama(model="llama3.1:8b", temperature=0.0)
 graph = build_graph(llm)
 
-# ✅ NEW: Absolute path to /data folder
+# Absolute path to /data folder
 DATA_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), "../data"))
 
 progress_log = []
@@ -20,7 +20,7 @@ task_done = False
 
 @app.route("/")
 def index():
-    # ✅ NEW: Collect all .txt files under /data
+    # Get .txt files under /data
     txt_files = []
     for root, dirs, files in os.walk(DATA_FOLDER):
         for file in files:
@@ -69,11 +69,21 @@ def start_task():
         progress_log.append("✅ Report ready.")
         progress_log.append(full_report)
 
+        # Optional dummy metrics — replace with real analysis logic
+        dummy_metrics = {
+            "avg_packet_length": 523,
+            "max_packet_length": 1412,
+            "packet_count": 38,
+            "source_ips": ["192.168.0.1", "10.0.0.2"],
+            "ports": [22, 80, 443]
+        }
+
         final_output.update({
             "assign": "SOC Report Ready",
             "classify": "SOC Report Ready",
             "justify": full_report,
-            "recommend": "SOC Report Ready"
+            "recommend": "SOC Report Ready",
+            "metrics": dummy_metrics
         })
 
         global task_done
@@ -108,7 +118,7 @@ Generate a structured, concise report in this format:
 
 📄 **Rans Pupils Anomaly Report**
 
-🔹 **Anomaly ID**: Auto-generated or derived from IP
+🔹 **Anomaly ID**: Auto-generated or derived from IP  
 🔹 **Confidence Score**: <0-100>
 
 🔸 **Classification**: e.g. Denial-of-Service (DoS), Port Scan

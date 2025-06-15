@@ -57,7 +57,27 @@
       <h4>📄 Final SOC Report</h4>
       <pre id="justify" style="white-space: pre-wrap;"></pre>
     </div>
+
+    <!-- Graph section -->
+    <div id="graph-section" class="card shadow p-4 mt-4" style="display: none;">
+      <h4>📊 Anomaly Metrics Visualization</h4>
+      <canvas id="metrics-chart" width="400" height="200"></canvas>
+
+      <h5 class="mt-4">📋 Summary Table</h5>
+      <table class="table table-bordered mt-2">
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody id="metrics-table-body"></tbody>
+      </table>
+    </div>
   </div>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <script>
     let startTime;
@@ -95,6 +115,7 @@
       });
     });
 
+    // Submit handler
     document.getElementById("analyze-form").addEventListener("submit", function (e) {
       e.preventDefault();
       const formData = new FormData(e.target);
@@ -102,6 +123,7 @@
       document.getElementById("status-area").style.display = "block";
       document.getElementById("status-log").innerText = "⏳ Starting task...";
       document.getElementById("final-result").style.display = "none";
+      document.getElementById("graph-section").style.display = "none";
 
       fetch("/start-task", {
         method: "POST",
@@ -122,10 +144,58 @@
 
               document.getElementById("justify").innerHTML = data.result.justify.replace(/\n/g, "<br>");
               document.getElementById("final-result").style.display = "block";
+
+              renderGraphAndTable(data.result.metrics);
+              document.getElementById("graph-section").style.display = "block";
             }
           });
       }, 1000);
     });
+
+    // Render chart and table
+    function renderGraphAndTable(metrics) {
+      if (!metrics) return;
+
+      const labels = ["Avg Packet Length", "Max Packet Length", "Packet Count"];
+      const values = [
+        metrics.avg_packet_length,
+        metrics.max_packet_length,
+        metrics.packet_count
+      ];
+
+      const ctx = document.getElementById('metrics-chart').getContext('2d');
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Metric Values',
+            data: values,
+            backgroundColor: ['#0d6efd88', '#0d6efd66', '#0d6efd44'],
+            borderColor: '#0d6efd',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { stepSize: 1 }
+            }
+          }
+        }
+      });
+
+      const tableBody = document.getElementById("metrics-table-body");
+      tableBody.innerHTML = `
+        <tr><td>Avg Packet Length</td><td>${metrics.avg_packet_length}</td></tr>
+        <tr><td>Max Packet Length</td><td>${metrics.max_packet_length}</td></tr>
+        <tr><td>Packet Count</td><td>${metrics.packet_count}</td></tr>
+        <tr><td>Source IPs</td><td>${metrics.source_ips.join(', ')}</td></tr>
+        <tr><td>Affected Ports</td><td>${metrics.ports.join(', ')}</td></tr>
+      `;
+    }
   </script>
 </body>
 </html>
