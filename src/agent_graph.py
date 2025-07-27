@@ -28,14 +28,14 @@ def planner(state: AgentState) -> dict:
 
     ---
 
-    📄 **Rans Pupils Anomaly Report**
+    **Rans Pupils Anomaly Report**
 
-    🔹 **Anomaly ID**: Auto-generated or derived from source IP/cluster
-    🔹 **Confidence Score**: <number out of 100>
+    **Anomaly ID**: Auto-generated or derived from source IP/cluster
+    **Confidence Score**: <number out of 100>
 
-    🔸 **Classification**: <Short name, e.g. "Denial-of-Service (DoS)", "Port Scan", "Suspicious Exfiltration">
+    **Classification**: <Short name, e.g. "Denial-of-Service (DoS)", "Port Scan", "Suspicious Exfiltration">
 
-    🧪 **Impact Summary**:
+    **Impact Summary**:
     - Clearly describe the potential threat and affected assets
     - Avoid repeating facts; be concise and unique
 
@@ -46,18 +46,18 @@ def planner(state: AgentState) -> dict:
     - Affected Ports: <list>
     - Flags Detected: <e.g. PSH/ACK/URG>
 
-    🔍 **Supporting Evidence**:
+    **Supporting Evidence**:
     - One or two insights that show this is anomalous compared to normal traffic
     - Show deviations, unusual timing, or correlation across nodes
 
-    🛡 **Recommendations**:
+    **Recommendations**:
     1. Investigate <ip>:<port>...
     2. Analyze logs for ...
     3. Apply mitigation: <firewall, rate-limit, etc>
 
     ---
 
-    🔒 Your output must match this structure exactly. Do **not** repeat IPs or patterns more than once. No extra commentary.
+    Your output must match this structure exactly. Do **not** repeat IPs or patterns more than once. No extra commentary.
 
     Respond with **only the filled-in report**, nothing else.
     """
@@ -76,7 +76,7 @@ def planner(state: AgentState) -> dict:
             steps.append(f"Step {i}:{match.group(1).strip()}")
 
     if len(steps) != 4:
-        console.print(f"[red]⚠️ Expected 4 steps but got {len(steps)}.\nRaw response:\n{full_response}[/red]")
+        console.print(f"[red] Expected 4 steps but got {len(steps)}.\nRaw response:\n{full_response}[/red]")
 
     return {"plan": steps}
 

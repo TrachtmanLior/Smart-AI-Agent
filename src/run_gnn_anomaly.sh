@@ -23,7 +23,7 @@ for FILE in "${FILES_2017[@]}"; do
         OUTPUT_FILE="${OUTPUT_DIR_2017}/${FILE%.csv}_${SIZE}.txt"
 
         if [ ! -f "$INPUT_FILE" ]; then
-            echo "❌ Input file not found: $INPUT_FILE"
+            echo "Input file not found: $INPUT_FILE"
             continue
         fi
 
@@ -54,7 +54,7 @@ for ATTACK_INFO in "${ATTACKS[@]}"; do
     INPUT_FILE="${INPUT_DIR_2018}/${FILE}"
 
     if [ ! -f "$INPUT_FILE" ]; then
-        echo "❌ Input file not found: $INPUT_FILE"
+        echo "Input file not found: $INPUT_FILE"
         continue
     fi
 
@@ -67,4 +67,4 @@ for ATTACK_INFO in "${ATTACKS[@]}"; do
     done
 done
 
-echo "✅ Completed all runs."
+echo "Completed all runs."

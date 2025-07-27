@@ -17,11 +17,11 @@ def main():
         temperature=0.3
     )
 
-    console.print("✅ [bold green]LLM loaded.[/bold green] Building graph...")
+    console.print("[bold green]LLM loaded.[/bold green] Building graph...")
     graph = build_graph(llm)
 
     text = load_input()
-    console.print("📄 [bold blue]Loaded input text[/bold blue] from [italic]data/anomaly_summary.txt[/italic]")
+    console.print("[bold blue]Loaded input text[/bold blue] from [italic]data/anomaly_summary.txt[/italic]")
 
     state: AgentState = {
         "raw_text": text,
@@ -32,7 +32,7 @@ def main():
         "llm": llm
     }
 
-    console.print("\n🤖 [bold yellow]Agent thinking...[/bold yellow]\n")
+    console.print("\n[bold yellow]Agent thinking...[/bold yellow]\n")
 
     with Progress(
         SpinnerColumn(),
@@ -43,18 +43,18 @@ def main():
     ) as progress:
         task = progress.add_task("Planning & Executing...", start=True)
         result = asyncio.run(graph.ainvoke(state)) 
-        progress.update(task, description="✅ Finished execution")
+        progress.update(task, description="Finished execution")
         progress.stop()
 
     default_keys = {"assign": "N/A", "classify": "N/A", "justify": "N/A", "recommend": "N/A"}
     output = {**default_keys, **result.get("final_output", {})}
 
     console.print("\n=== 🧠 [bold underline]Anomaly Agent Detailed Report[/bold underline] ===")
-    console.print(f"🟡 [bold]Confidence Score:[/bold] {output['assign']}")
-    console.print(f"🧩 [bold]Anomaly Classification:[/bold] {output['classify']}")
-    console.print(f"📝 [bold]Detailed Justification:[/bold]\n{output['justify']}")
-    console.print(f"🔍 [bold]Why It's Anomalous:[/bold]\nBased on observed packet patterns, abnormal length distributions, and timing, the agent detected significant deviation from expected behavior in the cluster logs.\n")
-    console.print(f"🔁 [bold]Recommended Investigation:[/bold] {output['recommend']}")
+    console.print(f"[bold]Confidence Score:[/bold] {output['assign']}")
+    console.print(f"[bold]Anomaly Classification:[/bold] {output['classify']}")
+    console.print(f"[bold]Detailed Justification:[/bold]\n{output['justify']}")
+    console.print(f"[bold]Why It's Anomalous:[/bold]\nBased on observed packet patterns, abnormal length distributions, and timing, the agent detected significant deviation from expected behavior in the cluster logs.\n")
+    console.print(f"[bold]Recommended Investigation:[/bold] {output['recommend']}")
 
 if __name__ == "__main__":
     main()

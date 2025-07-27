@@ -67,15 +67,15 @@ def start_task():
             "llm": llm
         }
 
-        progress_log.append("📌 [Planning] Generating structured SOC reports for each anomaly...")
+        progress_log.append("[Planning] Generating structured SOC reports for each anomaly...")
 
         anomalies = split_anomalies(input_text)
         full_report = ""
 
         for cluster_idx, (cluster_id, anomaly_texts) in enumerate(anomalies, 1):
-            progress_log.append(f"📦 Processing cluster {cluster_id} ({len(anomaly_texts)} nodes)...")
+            progress_log.append(f"Processing cluster {cluster_id} ({len(anomaly_texts)} nodes)...")
             
-            # 1️⃣ Get a single cluster-level summary with confidence & classification
+            #Get a single cluster-level summary with confidence & classification
             cluster_text_block = "\n\n".join(anomaly_texts)
             cluster_summary_prompt = f"""
         You are a cybersecurity analyst from the SOC team "Rans Pupils".
@@ -88,7 +88,7 @@ def start_task():
 
         Write a **cluster-level summary** in Markdown with exactly this format:
 
-        ## 📦 Cluster {cluster_id} Summary
+        ## Cluster {cluster_id} Summary
 
         **Confidence Score**: <single overall score out of 100>  
         **Classification**: "Potential Malicious Activity"
@@ -102,7 +102,7 @@ def start_task():
             cluster_summary_result = llm.invoke(cluster_summary_prompt)
             cluster_summary = cluster_summary_result.content.strip()
 
-            # 2️⃣ Generate all node reports without confidence/classification
+            #Generate all node reports without confidence/classification
             node_reports = []
             node_ids = []
             for idx, anomaly_text in enumerate(anomaly_texts, 1):
@@ -110,7 +110,7 @@ def start_task():
                 prompt = generate_soc_prompt(anomaly_text)
                 result = llm.invoke(prompt)
                 report = result.content.strip()
-                node_reports.append(f"\n\n### 🧾 Report for Node {idx} in Cluster {cluster_id}\n{report}\n")
+                node_reports.append(f"\n\n### Report for Node {idx} in Cluster {cluster_id}\n{report}\n")
 
                 # Extract just the Anomaly ID (for the brief list)
                 node_id_prompt = f"""
@@ -124,20 +124,20 @@ def start_task():
                 node_id_result = llm.invoke(node_id_prompt)
                 node_ids.append(node_id_result.content.strip())
 
-                progress_log.append(f"✅ Finished processing node {idx} from cluster {cluster_id}")
+                progress_log.append(f"Finished processing node {idx} from cluster {cluster_id}")
 
-            # 3️⃣ Combine all cluster parts
+            #Combine all cluster parts
             cluster_text = f"\n\n{cluster_summary}\n"
             cluster_text += "".join(node_reports)
             cluster_text += "\n\n### 📜 Brief Node Anomalies\n"
             cluster_text += "\n".join(node_ids)
 
-            # 4️⃣ Append to full report
+            #Append to full report
             full_report += cluster_text
 
 
 
-        progress_log.append("✅ All nodes processed.")
+        progress_log.append("All nodes processed.")
 
         dummy_metrics = {
             "avg_packet_length": 523,
@@ -238,9 +238,9 @@ Analyze the following anomaly log and generate a detailed technical report **wit
 
 Respond in this exact format:
 
-📄 **Rans Pupils Anomaly Report**
+**Rans Pupils Anomaly Report**
 
-🧪 **Impact Summary**:
+**Impact Summary**:
 - Describe affected systems, risks, goals
 
 📊 **Key Metrics**:
@@ -250,10 +250,10 @@ Respond in this exact format:
 - Affected Ports: [list]
 - Flags: e.g. PSH/ACK/URG
 
-🔍 **Supporting Evidence**:
+**Supporting Evidence**:
 - Unusual timing, repeated flags, etc.
 
-🛡 **Recommendations**:
+**Recommendations**:
 1. Investigate source IPs
 2. Apply firewall/rate-limit
 3. Monitor traffic anomalies
